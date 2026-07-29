@@ -1,0 +1,76 @@
+version: 1
+
+sources:
+  ios_rule_script:
+    repository: blackmatrix7/ios_rule_script
+    ref: master
+    license: GPL-2.0
+  rule_file:
+    repository: haha-miao/rule_file
+    ref: main
+    license: NOASSERTION
+  additional_rule_for_clash:
+    repository: Accademia/Additional_Rule_For_Clash
+    ref: main
+    license: MIT
+  skywalker_clash_rules:
+    repository: SkywalkerJi/Clash-Rules
+    ref: master
+    license: GPL-3.0
+  shadowrocket_rules:
+    repository: hanjl7/Shadowrocket-Rules
+    ref: main
+    license: MIT
+
+rules:
+  # Direct: high-priority explicit direct rules.
+  - { provider: Directrp, client: clash, format: clash-classical, source: ios_rule_script, upstream_path: rule/Clash/Direct/Direct_No_Resolve.yaml, target_path: rules/clash/Direct.yaml }
+  - { provider: Directrp, client: clash, format: clash-classical, source: ios_rule_script, upstream_path: rule/Clash/WeChat/WeChat_No_Resolve.yaml, target_path: rules/clash/Direct.yaml }
+  - { provider: Directrp, client: clash, format: clash-classical, source: ios_rule_script, upstream_path: rule/Clash/Lan/Lan_No_Resolve.yaml, target_path: rules/clash/Direct.yaml }
+  - { provider: Directrp, client: clash, format: clash-classical, source: rule_file, upstream_path: clash/emby/emby-direct.yaml, target_path: rules/clash/Direct.yaml }
+
+  # AI: dedicated providers first, then the personal AI.list as a fallback.
+  - { provider: AIrp, client: clash, format: clash-classical, source: ios_rule_script, upstream_path: rule/Clash/OpenAI/OpenAI_No_Resolve.yaml, target_path: rules/clash/AI.yaml }
+  - { provider: AIrp, client: clash, format: clash-classical, source: additional_rule_for_clash, upstream_path: Grok/Grok.yaml, target_path: rules/clash/AI.yaml }
+  - { provider: AIrp, client: clash, format: clash-classical, source: skywalker_clash_rules, upstream_path: AI/Cursor.yaml, target_path: rules/clash/AI.yaml }
+  - { provider: AIrp, client: clash, format: clash-classical, source: skywalker_clash_rules, upstream_path: AI/Anthropic.yaml, target_path: rules/clash/AI.yaml }
+  - { provider: AIrp, client: clash, format: clash-classical, source: skywalker_clash_rules, upstream_path: AI/Gemini.yaml, target_path: rules/clash/AI.yaml }
+  - { provider: AIrp, client: clash, format: clash-classical, transform: shadowrocket-list-to-clash-classical, source: shadowrocket_rules, upstream_path: AI.list, target_path: rules/clash/AI.yaml }
+
+  # Crypto.
+  - { provider: Cryptorp, client: clash, format: clash-classical, source: rule_file, upstream_path: clash/crypto/Crypto.yaml, target_path: rules/clash/Crypto.yaml }
+
+  # Social.
+  - { provider: Socialrp, client: clash, format: clash-classical, source: ios_rule_script, upstream_path: rule/Clash/Discord/Discord_No_Resolve.yaml, target_path: rules/clash/Social.yaml }
+  - { provider: Socialrp, client: clash, format: clash-classical, source: ios_rule_script, upstream_path: rule/Clash/Telegram/Telegram_No_Resolve.yaml, target_path: rules/clash/Social.yaml }
+  - { provider: Socialrp, client: clash, format: clash-classical, source: ios_rule_script, upstream_path: rule/Clash/Twitter/Twitter_No_Resolve.yaml, target_path: rules/clash/Social.yaml }
+  - { provider: Socialrp, client: clash, format: clash-classical, source: ios_rule_script, upstream_path: rule/Clash/TikTok/TikTok_No_Resolve.yaml, target_path: rules/clash/Social.yaml }
+
+  # Video and media.
+  - { provider: Videorp, client: clash, format: clash-classical, source: ios_rule_script, upstream_path: rule/Clash/YouTube/YouTube_No_Resolve.yaml, target_path: rules/clash/Video.yaml }
+  - { provider: Videorp, client: clash, format: clash-classical, source: ios_rule_script, upstream_path: rule/Clash/Netflix/Netflix_Classical_No_Resolve.yaml, target_path: rules/clash/Video.yaml }
+  - { provider: Videorp, client: clash, format: clash-classical, source: ios_rule_script, upstream_path: rule/Clash/PikPak/PikPak_No_Resolve.yaml, target_path: rules/clash/Video.yaml }
+  - { provider: Videorp, client: clash, format: clash-classical, source: ios_rule_script, upstream_path: rule/Clash/BiliBili/BiliBili_No_Resolve.yaml, target_path: rules/clash/Video.yaml }
+  - { provider: Videorp, client: clash, format: clash-classical, source: ios_rule_script, upstream_path: rule/Clash/Disney/Disney_No_Resolve.yaml, target_path: rules/clash/Video.yaml }
+  - { provider: Videorp, client: clash, format: clash-classical, source: ios_rule_script, upstream_path: rule/Clash/HBO/HBO_No_Resolve.yaml, target_path: rules/clash/Video.yaml }
+  - { provider: Videorp, client: clash, format: clash-classical, source: ios_rule_script, upstream_path: rule/Clash/Bahamut/Bahamut_No_Resolve.yaml, target_path: rules/clash/Video.yaml }
+  - { provider: Videorp, client: clash, format: clash-classical, source: rule_file, upstream_path: clash/emby/emby-proxy.yaml, target_path: rules/clash/Video.yaml }
+  - { provider: Videorp, client: clash, format: clash-classical, source: ios_rule_script, upstream_path: rule/Clash/GlobalMedia/GlobalMedia_Classical_No_Resolve.yaml, target_path: rules/clash/Video.yaml }
+
+  # Technology services.
+  - { provider: Techrp, client: clash, format: clash-classical, source: ios_rule_script, upstream_path: rule/Clash/Apple/Apple_Classical_No_Resolve.yaml, target_path: rules/clash/Tech.yaml }
+  - { provider: Techrp, client: clash, format: clash-classical, source: ios_rule_script, upstream_path: rule/Clash/GitHub/GitHub_No_Resolve.yaml, target_path: rules/clash/Tech.yaml }
+  - { provider: Techrp, client: clash, format: clash-classical, source: ios_rule_script, upstream_path: rule/Clash/Microsoft/Microsoft_No_Resolve.yaml, target_path: rules/clash/Tech.yaml }
+  - { provider: Techrp, client: clash, format: clash-classical, source: ios_rule_script, upstream_path: rule/Clash/Google/Google_No_Resolve.yaml, target_path: rules/clash/Tech.yaml }
+
+  # Finance and foreign brokers.
+  - { provider: Brokerrp, client: clash, format: clash-classical, source: ios_rule_script, upstream_path: rule/Clash/PayPal/PayPal_No_Resolve.yaml, target_path: rules/clash/Broker.yaml }
+  - { provider: Brokerrp, client: clash, format: clash-classical, transform: shadowrocket-list-to-clash-classical, source: shadowrocket_rules, upstream_path: HK_Broker.list, target_path: rules/clash/Broker.yaml }
+
+  # Games.
+  - { provider: Gamerp, client: clash, format: clash-classical, source: ios_rule_script, upstream_path: rule/Clash/Steam/Steam_No_Resolve.yaml, target_path: rules/clash/Game.yaml }
+  - { provider: Gamerp, client: clash, format: clash-classical, source: ios_rule_script, upstream_path: rule/Clash/SteamCN/SteamCN_No_Resolve.yaml, target_path: rules/clash/Game.yaml }
+
+  # Broad China and proxy lists stay separate so rule ordering remains safe.
+  - { provider: Chinarp, client: clash, format: clash-classical, source: ios_rule_script, upstream_path: rule/Clash/ChinaMax/ChinaMax_Classical_No_Resolve.yaml, target_path: rules/clash/China.yaml }
+  - { provider: Proxyrp, client: clash, format: clash-classical, source: ios_rule_script, upstream_path: rule/Clash/Proxy/Proxy_Classical_No_Resolve.yaml, target_path: rules/clash/Proxy.yaml }
