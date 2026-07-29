@@ -22,6 +22,9 @@ sources:
     ref: main
     license: MIT
 
+overrides:
+  Brokerrp: overrides/clash/Broker.yaml
+
 rules:
   # Direct: high-priority explicit direct rules.
   - { provider: Directrp, client: clash, format: clash-classical, source: ios_rule_script, upstream_path: rule/Clash/Direct/Direct_No_Resolve.yaml, target_path: rules/clash/Direct.yaml }

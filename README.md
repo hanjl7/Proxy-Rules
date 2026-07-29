@@ -47,6 +47,10 @@ uv run --frozen python scripts/sync_rules.py validate
 `AI`、`Crypto`、`Social`、`Video`、`Tech`、`Broker`、`Game`、`Direct`、
 `China` 和 `Proxy`。
 
+`sources.yaml` 的 `overrides` 可为指定 provider 合并本仓库维护的补充规则。
+补充规则保存在 [`overrides/clash`](overrides/clash)，同步时参与去重和格式校验；
+Shadowrocket 输出会自动过滤不支持的进程规则。
+
 其中 `AI.list` 和 `HK_Broker.list` 会先从 Shadowrocket list 格式转换，再并入
 对应聚合文件。20 个生成文件的校验值记录在
 [`checksums.sha256`](checksums.sha256)。

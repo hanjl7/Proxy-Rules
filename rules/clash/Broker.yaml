@@ -407,3 +407,13 @@ payload:
   - "DOMAIN-SUFFIX,schwab.com.cn"
   - "DOMAIN-SUFFIX,schwab.com.hk"
   - "DOMAIN-SUFFIX,schwab.co.uk"
+
+  # Local override: overrides/clash/Broker.yaml
+  - "PROCESS-NAME,FTNN"
+  - "PROCESS-NAME,FTNN Helper"
+  - "DOMAIN-WILDCARD,time*.cloud.tencent.com"
+  - "DOMAIN-SUFFIX,my-imcloud.com"
+  - "IP-CIDR,106.55.184.200/32,no-resolve"
+  - "IP-CIDR,119.91.243.37/32,no-resolve"
+  - "IP-CIDR,134.175.253.104/32,no-resolve"
+  - "IP-CIDR,221.229.52.251/32,no-resolve"

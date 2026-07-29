@@ -80,7 +80,11 @@ def clean_relative_path(value: object, *, label: str) -> PurePosixPath:
     return path
 
 
-def load_manifest() -> tuple[dict[str, dict[str, str]], list[dict[str, str]]]:
+def load_manifest() -> tuple[
+    dict[str, dict[str, str]],
+    list[dict[str, str]],
+    dict[str, str],
+]:
     try:
         document = yaml.safe_load(MANIFEST_PATH.read_text(encoding="utf-8"))
     except (OSError, yaml.YAMLError) as exc:
@@ -91,10 +95,13 @@ def load_manifest() -> tuple[dict[str, dict[str, str]], list[dict[str, str]]]:
 
     sources = document.get("sources")
     rules = document.get("rules")
+    overrides = document.get("overrides", {})
     if not isinstance(sources, dict) or not sources:
         raise SyncError("sources.yaml must define at least one source")
     if not isinstance(rules, list) or not rules:
         raise SyncError("sources.yaml must define at least one rule")
+    if not isinstance(overrides, dict):
+        raise SyncError("sources.yaml overrides must be a mapping")
 
     normalized_sources: dict[str, dict[str, str]] = {}
     for source_id, metadata in sources.items():
@@ -173,7 +180,19 @@ def load_manifest() -> tuple[dict[str, dict[str, str]], list[dict[str, str]]]:
         normalized_rules[-1]["target_path"] = target_path.as_posix()
         normalized_rules[-1]["transform"] = transform
 
-    return normalized_sources, normalized_rules
+    known_providers = {rule["provider"] for rule in normalized_rules}
+    normalized_overrides: dict[str, str] = {}
+    for provider, value in overrides.items():
+        if not isinstance(provider, str) or provider not in known_providers:
+            raise SyncError(f"override references unknown provider {provider!r}")
+        path = clean_relative_path(value, label=f"{provider} override")
+        if path.parts[:1] != ("overrides",):
+            raise SyncError(f"{provider} override must be under overrides/")
+        if path.suffix not in {".yaml", ".yml"}:
+            raise SyncError(f"{provider} override must be a YAML file")
+        normalized_overrides[provider] = path.as_posix()
+
+    return normalized_sources, normalized_rules, normalized_overrides
 
 
 def validate_clash_rule(path: Path, provider: str) -> None:
@@ -426,6 +445,7 @@ def build_aggregate(
     sources: dict[str, dict[str, str]],
     inputs: list[dict[str, str]],
     checkouts: dict[str, Path],
+    overrides: dict[str, str],
     target: Path,
 ) -> tuple[int, int]:
     provider = inputs[0]["provider"]
@@ -460,6 +480,19 @@ def build_aggregate(
             f"https://github.com/{metadata['repository']}/blob/"
             f"{metadata['ref']}/{rule['upstream_path']}"
         )
+        input_count += len(payload)
+        for item in payload:
+            item = normalize_clash_rule(item, provider=provider)
+            if item in seen:
+                continue
+            seen.add(item)
+            output.append(f"  - {json.dumps(item, ensure_ascii=False)}")
+
+    override_path = overrides.get(provider)
+    if override_path is not None:
+        payload = read_clash_payload(ROOT / override_path, provider)
+        output.append("")
+        output.append(f"  # Local override: {override_path}")
         input_count += len(payload)
         for item in payload:
             item = normalize_clash_rule(item, provider=provider)
@@ -529,6 +562,7 @@ def build_shadowrocket_output(
 def staged_tree(
     sources: dict[str, dict[str, str]],
     rules: list[dict[str, str]],
+    overrides: dict[str, str],
     stage: Path,
 ) -> None:
     clone_root = stage / "upstreams"
@@ -541,6 +575,7 @@ def staged_tree(
             sources,
             inputs,
             checkouts,
+            overrides,
             target,
         )
         shadowrocket_count, omitted_count = build_shadowrocket_output(
@@ -604,14 +639,16 @@ def replace_clients(rules: list[dict[str, str]], staged: Path) -> None:
 
 
 def synchronize(
-    sources: dict[str, dict[str, str]], rules: list[dict[str, str]]
+    sources: dict[str, dict[str, str]],
+    rules: list[dict[str, str]],
+    overrides: dict[str, str],
 ) -> None:
     if shutil.which("gh") is None or shutil.which("git") is None:
         raise SyncError("gh and git must both be available")
 
     with tempfile.TemporaryDirectory(prefix=".sync-stage-", dir=ROOT) as stage_name:
         stage = Path(stage_name)
-        staged_tree(sources, rules, stage)
+        staged_tree(sources, rules, overrides, stage)
         snapshot = stage / "snapshot"
         checksums = checksum_document(rules, snapshot)
 
@@ -648,9 +685,9 @@ def main() -> int:
     args = parser.parse_args()
 
     try:
-        sources, rules = load_manifest()
+        sources, rules, overrides = load_manifest()
         if args.command == "sync":
-            synchronize(sources, rules)
+            synchronize(sources, rules, overrides)
         else:
             validate_repository(rules)
     except (SyncError, subprocess.CalledProcessError) as exc:
