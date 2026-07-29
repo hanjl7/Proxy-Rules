@@ -1,8 +1,8 @@
 # Proxy-Rules
 
-`Proxy-Rules` 是个人维护的多客户端代理规则快照仓库。首版提供 Clash
-classical rule-provider 文件；未来的客户端格式统一放在 `rules/<client>/`
-目录下。
+`Proxy-Rules` 是个人维护的多客户端代理规则快照仓库。目前同时提供 Clash
+classical rule-provider 与 Shadowrocket RULE-SET 文件；客户端格式统一放在
+`rules/<client>/` 目录下。
 
 ## Clash
 
@@ -13,6 +13,20 @@ url: https://raw.githubusercontent.com/hanjl7/Proxy-Rules/refs/heads/main/rules/
 ```
 
 本仓库仅保存规则，不包含代理订阅、节点、密钥或完整 Clash 配置。
+
+## Shadowrocket
+
+纯文本规则文件位于 [`rules/shadowrocket`](rules/shadowrocket)，可直接通过
+`RULE-SET` 引用：
+
+```ini
+RULE-SET,https://raw.githubusercontent.com/hanjl7/Proxy-Rules/refs/heads/main/rules/shadowrocket/AI.list,AI服务
+```
+
+Shadowrocket 不支持 Clash YAML 的 `payload:` 外壳，也不支持 iOS 上的进程名
+匹配。同步脚本会从同一份 Clash 聚合快照派生 `.list`：把 `IP-CIDR6` 转换为
+Shadowrocket 使用的 `IP-CIDR`，并过滤 `PROCESS-NAME`、`PROCESS-PATH` 和
+`PROCESS-NAME-REGEX`。
 
 ## 更新
 
@@ -28,13 +42,14 @@ uv run --frozen python scripts/sync_rules.py validate
 ```
 
 规则来源和目标路径由 [`sources.yaml`](sources.yaml) 管理。34 份上游输入会去重
-合并为 10 个 Clash rule-provider：
+合并为 10 个类别，并各自生成 Clash 与 Shadowrocket 两种格式：
 
 `AI`、`Crypto`、`Social`、`Video`、`Tech`、`Broker`、`Game`、`Direct`、
 `China` 和 `Proxy`。
 
 其中 `AI.list` 和 `HK_Broker.list` 会先从 Shadowrocket list 格式转换，再并入
-对应聚合文件。文件校验值记录在 [`checksums.sha256`](checksums.sha256)。
+对应聚合文件。20 个生成文件的校验值记录在
+[`checksums.sha256`](checksums.sha256)。
 
 ## 来源与许可
 

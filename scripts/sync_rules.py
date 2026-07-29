@@ -25,6 +25,25 @@ MANIFEST_PATH = ROOT / "sources.yaml"
 RULES_ROOT = ROOT / "rules"
 CHECKSUMS_PATH = ROOT / "checksums.sha256"
 REPOSITORY_RE = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
+SHADOWROCKET_RULE_TYPES = {
+    "AND",
+    "DOMAIN",
+    "DOMAIN-KEYWORD",
+    "DOMAIN-SUFFIX",
+    "DOMAIN-WILDCARD",
+    "DST-PORT",
+    "IP-ASN",
+    "IP-CIDR",
+    "NOT",
+    "OR",
+    "URL-REGEX",
+    "USER-AGENT",
+}
+SHADOWROCKET_OMITTED_RULE_TYPES = {
+    "PROCESS-NAME",
+    "PROCESS-NAME-REGEX",
+    "PROCESS-PATH",
+}
 
 
 class SyncError(RuntimeError):
@@ -253,18 +272,64 @@ def grouped_rules(
     return groups
 
 
+def shadowrocket_target_path(clash_target: str) -> str:
+    path = PurePosixPath(clash_target)
+    if path.parts[:2] != ("rules", "clash"):
+        raise SyncError(
+            f"cannot derive Shadowrocket target from non-Clash path {clash_target!r}"
+        )
+    return (
+        PurePosixPath("rules", "shadowrocket") / path.with_suffix(".list").name
+    ).as_posix()
+
+
+def managed_targets(rules: list[dict[str, str]]) -> list[str]:
+    clash_targets = sorted(grouped_rules(rules))
+    shadowrocket_targets = [
+        shadowrocket_target_path(target) for target in clash_targets
+    ]
+    return clash_targets + shadowrocket_targets
+
+
 def checksum_document(rules: list[dict[str, str]], base: Path = ROOT) -> str:
     lines = [
         f"{sha256(base / target)}  {target}"
-        for target in sorted(grouped_rules(rules))
+        for target in sorted(managed_targets(rules))
     ]
     return "\n".join(lines) + "\n"
 
 
+def read_shadowrocket_output(path: Path, provider: str) -> list[str]:
+    try:
+        lines = path.read_text(encoding="utf-8-sig").splitlines()
+    except (OSError, UnicodeError) as exc:
+        raise SyncError(f"{provider}: cannot read Shadowrocket output: {exc}") from exc
+
+    rules: list[str] = []
+    for line_number, original_line in enumerate(lines, start=1):
+        line = original_line.strip()
+        if not line or line.startswith(("#", ";", "//")):
+            continue
+        rule_type, separator, argument = line.partition(",")
+        if (
+            not separator
+            or not argument
+            or rule_type not in SHADOWROCKET_RULE_TYPES
+        ):
+            raise SyncError(
+                f"{provider}: invalid Shadowrocket rule at "
+                f"{path}:{line_number}: {original_line!r}"
+            )
+        rules.append(line)
+    if not rules:
+        raise SyncError(f"{provider}: Shadowrocket output contains no rules")
+    return rules
+
+
 def validate_tree(rules: list[dict[str, str]], base: Path = ROOT) -> None:
     groups = grouped_rules(rules)
-    expected = set(groups)
-    clients = {rule["client"] for rule in rules}
+    expected = set(managed_targets(rules))
+    clients = {"clash", "shadowrocket"}
     actual: set[str] = set()
     for client in clients:
         client_dir = base / "rules" / client
@@ -281,7 +346,21 @@ def validate_tree(rules: list[dict[str, str]], base: Path = ROOT) -> None:
         raise SyncError(f"managed rule set mismatch; missing={missing}, extra={extra}")
 
     for target, inputs in groups.items():
-        validate_clash_rule(base / target, inputs[0]["provider"])
+        provider = inputs[0]["provider"]
+        clash_payload = read_clash_payload(base / target, provider)
+        shadowrocket_payload = read_shadowrocket_output(
+            base / shadowrocket_target_path(target),
+            provider,
+        )
+        expected_shadowrocket = [
+            converted
+            for item in clash_payload
+            if (converted := shadowrocket_rule(item, provider=provider)) is not None
+        ]
+        if shadowrocket_payload != expected_shadowrocket:
+            raise SyncError(
+                f"{provider}: Shadowrocket output does not match Clash payload"
+            )
 
 
 def write_if_changed(path: Path, content: str) -> bool:
@@ -397,6 +476,56 @@ def build_aggregate(
     return input_count, len(seen)
 
 
+def shadowrocket_rule(item: str, *, provider: str) -> str | None:
+    rule = normalize_clash_rule(item, provider=provider)
+    rule_type, separator, argument = rule.partition(",")
+    if not separator:
+        raise SyncError(f"{provider}: malformed Shadowrocket rule {item!r}")
+    if rule_type in SHADOWROCKET_OMITTED_RULE_TYPES:
+        return None
+    if rule_type == "IP-CIDR6":
+        rule_type = "IP-CIDR"
+    if rule_type not in SHADOWROCKET_RULE_TYPES:
+        raise SyncError(
+            f"{provider}: rule type {rule_type!r} is unsupported by Shadowrocket"
+        )
+    return f"{rule_type},{argument}"
+
+
+def build_shadowrocket_output(
+    clash_target: Path,
+    shadowrocket_target: Path,
+    *,
+    provider: str,
+) -> tuple[int, int]:
+    payload = read_clash_payload(clash_target, provider)
+    converted: list[str] = []
+    omitted = 0
+    for item in payload:
+        rule = shadowrocket_rule(item, provider=provider)
+        if rule is None:
+            omitted += 1
+            continue
+        converted.append(rule)
+    if not converted:
+        raise SyncError(f"{provider}: no Shadowrocket-compatible rules remain")
+
+    output = [
+        "# Generated Shadowrocket RULE-SET. Do not edit manually.",
+        f"# Provider: {provider}",
+        f"# Omitted unsupported process rules: {omitted}",
+        "",
+        *converted,
+    ]
+    shadowrocket_target.parent.mkdir(parents=True, exist_ok=True)
+    shadowrocket_target.write_text(
+        "\n".join(output).rstrip() + "\n",
+        encoding="utf-8",
+    )
+    read_shadowrocket_output(shadowrocket_target, provider)
+    return len(converted), omitted
+
+
 def staged_tree(
     sources: dict[str, dict[str, str]],
     rules: list[dict[str, str]],
@@ -414,9 +543,16 @@ def staged_tree(
             checkouts,
             target,
         )
+        shadowrocket_count, omitted_count = build_shadowrocket_output(
+            target,
+            stage / "snapshot" / shadowrocket_target_path(target_path),
+            provider=inputs[0]["provider"],
+        )
         print(
             f"Built {inputs[0]['provider']}: {unique_count} unique rules from "
-            f"{len(inputs)} sources ({input_count - unique_count} duplicates removed)",
+            f"{len(inputs)} sources ({input_count - unique_count} duplicates removed); "
+            f"{shadowrocket_count} Shadowrocket rules "
+            f"({omitted_count} process rules omitted)",
             flush=True,
         )
 
@@ -430,12 +566,12 @@ def trees_match(rules: list[dict[str, str]], staged: Path) -> bool:
         return False
     return all(
         (ROOT / target).read_bytes() == (staged / target).read_bytes()
-        for target in grouped_rules(rules)
+        for target in managed_targets(rules)
     )
 
 
 def replace_clients(rules: list[dict[str, str]], staged: Path) -> None:
-    clients = sorted({rule["client"] for rule in rules})
+    clients = ["clash", "shadowrocket"]
     RULES_ROOT.mkdir(exist_ok=True)
     swapped: list[tuple[Path, Path | None]] = []
     try:
@@ -491,7 +627,7 @@ def synchronize(
         replace_clients(rules, snapshot)
         write_if_changed(CHECKSUMS_PATH, checksums)
         validate_tree(rules, ROOT)
-        print(f"Updated {len(grouped_rules(rules))} rule snapshots", flush=True)
+        print(f"Updated {len(managed_targets(rules))} rule snapshots", flush=True)
 
 
 def validate_repository(rules: list[dict[str, str]]) -> None:
@@ -503,7 +639,7 @@ def validate_repository(rules: list[dict[str, str]]) -> None:
         raise SyncError(f"cannot read {CHECKSUMS_PATH}: {exc}") from exc
     if actual_checksums != expected_checksums:
         raise SyncError("checksums.sha256 does not match the managed rule files")
-    print(f"Validated {len(grouped_rules(rules))} managed rule files", flush=True)
+    print(f"Validated {len(managed_targets(rules))} managed rule files", flush=True)
 
 
 def main() -> int:
