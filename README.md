@@ -23,10 +23,10 @@ url: https://raw.githubusercontent.com/hanjl7/Proxy-Rules/refs/heads/main/rules/
 RULE-SET,https://raw.githubusercontent.com/hanjl7/Proxy-Rules/refs/heads/main/rules/shadowrocket/AI.list,AI服务
 ```
 
-Shadowrocket 不支持 Clash YAML 的 `payload:` 外壳，也不支持 iOS 上的进程名
-匹配。同步脚本会从同一份 Clash 聚合快照派生 `.list`：把 `IP-CIDR6` 转换为
-Shadowrocket 使用的 `IP-CIDR`，并过滤 `PROCESS-NAME`、`PROCESS-PATH` 和
-`PROCESS-NAME-REGEX`。
+Shadowrocket 不支持 Clash YAML 的 `payload:` 外壳，也不支持 iOS 上的桌面
+进程匹配。同步脚本会从同一份 Clash 聚合快照派生 `.list`：把 `IP-CIDR6`
+转换为 Shadowrocket 使用的 `IP-CIDR`，并过滤所有 `PROCESS-NAME*` 和
+`PROCESS-PATH*` 规则。
 
 ## 更新
 

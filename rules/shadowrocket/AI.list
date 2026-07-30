@@ -1,6 +1,6 @@
 # Generated Shadowrocket RULE-SET. Do not edit manually.
 # Provider: AIrp
-# Omitted unsupported process rules: 0
+# Omitted unsupported process rules: 15
 
 DOMAIN,browser-intake-datadoghq.com
 DOMAIN,chat.openai.com.cdn.cloudflare.net

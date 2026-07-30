@@ -1,0 +1,3 @@
+payload:
+  - "PROCESS-NAME,Spotify"
+  - "PROCESS-NAME-WILDCARD,Spotify Helper*"

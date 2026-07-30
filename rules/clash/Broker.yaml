@@ -410,7 +410,9 @@ payload:
 
   # Local override: overrides/clash/Broker.yaml
   - "PROCESS-NAME,FTNN"
-  - "PROCESS-NAME,FTNN Helper"
+  - "PROCESS-NAME-WILDCARD,FTNN Helper*"
+  - "PROCESS-NAME,FutuNiuniu"
+  - "PROCESS-PATH-REGEX,.*[/]IBKR Desktop[/].*"
   - "DOMAIN-WILDCARD,time*.cloud.tencent.com"
   - "DOMAIN-SUFFIX,my-imcloud.com"
   - "IP-CIDR,106.55.184.200/32,no-resolve"

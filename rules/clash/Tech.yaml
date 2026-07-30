@@ -3002,3 +3002,11 @@ payload:
   - "PROCESS-NAME,com.google.android.gsf"
   - "PROCESS-NAME,com.google.android.play.games"
   - "PROCESS-NAME,BackupandSync"
+
+  # Local override: overrides/clash/Tech.yaml
+  - "PROCESS-NAME,Bitwarden"
+  - "PROCESS-NAME-WILDCARD,Bitwarden Helper*"
+  - "PROCESS-NAME,Figma"
+  - "PROCESS-NAME-WILDCARD,Figma Helper*"
+  - "PROCESS-NAME,figma_agent"
+  - "PROCESS-PATH,/Applications/Warp.app/Contents/MacOS/stable"

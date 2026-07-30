@@ -23,7 +23,12 @@ sources:
     license: MIT
 
 overrides:
+  AIrp: overrides/clash/AI.yaml
   Brokerrp: overrides/clash/Broker.yaml
+  Gamerp: overrides/clash/Game.yaml
+  Socialrp: overrides/clash/Social.yaml
+  Techrp: overrides/clash/Tech.yaml
+  Videorp: overrides/clash/Video.yaml
 
 rules:
   # Direct: high-priority explicit direct rules.

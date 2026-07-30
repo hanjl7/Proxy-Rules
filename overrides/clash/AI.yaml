@@ -1,0 +1,23 @@
+payload:
+  # OpenAI desktop applications and network helpers.
+  - "PROCESS-NAME,ChatGPT"
+  - "PROCESS-NAME,Codex"
+  - "PROCESS-NAME-WILDCARD,Codex (*)"
+  - "PROCESS-NAME,SkyComputerUseService"
+  - "PROCESS-NAME,SkyComputerUseClient"
+
+  # Anthropic CLI and URL handler.
+  - "PROCESS-NAME,claude"
+
+  # Google Antigravity applications.
+  - "PROCESS-NAME,Antigravity"
+  - "PROCESS-NAME-WILDCARD,Antigravity Helper*"
+  - "PROCESS-NAME-WILDCARD,Antigravity IDE Helper*"
+  - "PROCESS-PATH-REGEX,.*[/]Antigravity IDE[.]app[/]Contents[/]MacOS[/]Electron$"
+
+  # AI-native editors and agents.
+  - "PROCESS-NAME,Cursor"
+  - "PROCESS-NAME-WILDCARD,Cursor Helper*"
+  - "PROCESS-NAME,factory-desktop"
+  - "PROCESS-NAME-WILDCARD,Factory Helper*"
+  - "PROCESS-NAME,zed"

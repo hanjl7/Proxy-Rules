@@ -149,3 +149,10 @@ payload:
   - "DOMAIN-KEYWORD,musical.ly"
   - "DOMAIN-KEYWORD,tiktok"
   - "PROCESS-NAME,com.zhiliaoapp.musically"
+
+  # Local override: overrides/clash/Social.yaml
+  - "PROCESS-NAME,Telegram"
+  - "PROCESS-NAME,MSTeams"
+  - "PROCESS-NAME,Microsoft Teams WebView"
+  - "PROCESS-NAME,Microsoft Teams ModuleHost"
+  - "PROCESS-NAME-WILDCARD,Microsoft Teams WebView Helper*"

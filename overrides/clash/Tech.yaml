@@ -1,0 +1,12 @@
+payload:
+  # Password sync.
+  - "PROCESS-NAME,Bitwarden"
+  - "PROCESS-NAME-WILDCARD,Bitwarden Helper*"
+
+  # Figma cloud collaboration.
+  - "PROCESS-NAME,Figma"
+  - "PROCESS-NAME-WILDCARD,Figma Helper*"
+  - "PROCESS-NAME,figma_agent"
+
+  # Warp's own cloud/AI process; terminal child commands keep their own process.
+  - "PROCESS-PATH,/Applications/Warp.app/Contents/MacOS/stable"

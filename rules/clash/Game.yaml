@@ -76,3 +76,7 @@ payload:
   - "DOMAIN-SUFFIX,steamcontent.com"
   - "DOMAIN-SUFFIX,steamserver.net"
   - "DOMAIN-SUFFIX,steamusercontent.com"
+
+  # Local override: overrides/clash/Game.yaml
+  - "PROCESS-NAME,steam_osx"
+  - "PROCESS-NAME,steamwebhelper"
