@@ -50,7 +50,15 @@ DOMAIN-SUFFIX,workos.com
 DOMAIN,cdn.usefathom.com
 DOMAIN-SUFFIX,anthropic.com
 DOMAIN-SUFFIX,claude.ai
+DOMAIN-SUFFIX,claude.com
 DOMAIN-SUFFIX,claudeusercontent.com
+DOMAIN-SUFFIX,snapcraft.io
+DOMAIN-SUFFIX,datadoghq.com
+DOMAIN-SUFFIX,facebook.net
+DOMAIN-SUFFIX,ubuntu.com
+DOMAIN-SUFFIX,githubusercontent.com
+DOMAIN-KEYWORD,claude
+DOMAIN-KEYWORD,anthropic
 DOMAIN,ai.google.dev
 DOMAIN,alkalimakersuite-pa.clients6.google.com
 DOMAIN,makersuite.google.com
@@ -75,10 +83,7 @@ DOMAIN,openaiapi-site.azureedge.net
 DOMAIN-KEYWORD,openaiapi
 DOMAIN-KEYWORD,openaicom
 DOMAIN,servd-anthropic-website.b-cdn.net
-DOMAIN-SUFFIX,claude.com
 DOMAIN-SUFFIX,claudemcpclient.com
-DOMAIN-KEYWORD,claude
-DOMAIN-KEYWORD,anthropic
 DOMAIN,copilot.microsoft.com
 DOMAIN,sydney.bing.com
 DOMAIN,www.bing.com
