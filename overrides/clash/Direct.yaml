@@ -1,0 +1,7 @@
+payload:
+  # NetEase UU Remote desktop traffic must always connect directly.
+  - "PROCESS-NAME,UURemote"
+
+  # NetEase-owned domains and all of their subdomains.
+  - "DOMAIN-SUFFIX,netease.com"
+  - "DOMAIN-SUFFIX,163.com"

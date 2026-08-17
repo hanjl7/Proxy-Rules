@@ -25,6 +25,7 @@ sources:
 overrides:
   AIrp: overrides/clash/AI.yaml
   Brokerrp: overrides/clash/Broker.yaml
+  Directrp: overrides/clash/Direct.yaml
   Gamerp: overrides/clash/Game.yaml
   Socialrp: overrides/clash/Social.yaml
   Techrp: overrides/clash/Tech.yaml

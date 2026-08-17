@@ -24,7 +24,7 @@ The manifest currently aggregates:
 
 - 5 upstream repositories;
 - 34 declared upstream inputs;
-- 6 local override files;
+- 7 local override files;
 - 10 provider categories;
 - 10 Clash outputs and 10 Shadowrocket outputs.
 

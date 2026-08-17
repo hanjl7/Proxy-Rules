@@ -1,6 +1,6 @@
 # Generated Shadowrocket RULE-SET. Do not edit manually.
 # Provider: Directrp
-# Omitted unsupported process rules: 36
+# Omitted unsupported process rules: 37
 
 DOMAIN,ad.10010.com
 DOMAIN,ad.12306.cn
@@ -439,3 +439,5 @@ DOMAIN-SUFFIX,8880080.xyz
 DOMAIN-SUFFIX,4348663.xyz
 DOMAIN-SUFFIX,cinebay.net
 DOMAIN-SUFFIX,goglobe.pro
+DOMAIN-SUFFIX,netease.com
+DOMAIN-SUFFIX,163.com

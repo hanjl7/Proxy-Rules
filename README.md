@@ -48,7 +48,7 @@ uv run --frozen python scripts/sync_rules.py validate
 `China` 和 `Proxy`。
 
 `sources.yaml` 的 `overrides` 可为指定 provider 合并本仓库维护的补充规则。
-补充规则保存在 [`overrides/clash`](overrides/clash)，同步时参与去重和格式校验；
+目前 7 个补充规则文件保存在 [`overrides/clash`](overrides/clash)，同步时参与去重和格式校验；
 Shadowrocket 输出会自动过滤不支持的进程规则。
 
 其中 `AI.list` 和 `HK_Broker.list` 会先从 Shadowrocket list 格式转换，再并入

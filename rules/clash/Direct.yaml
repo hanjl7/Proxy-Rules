@@ -482,3 +482,8 @@ payload:
   - "DOMAIN-SUFFIX,4348663.xyz"
   - "DOMAIN-SUFFIX,cinebay.net"
   - "DOMAIN-SUFFIX,goglobe.pro"
+
+  # Local override: overrides/clash/Direct.yaml
+  - "PROCESS-NAME,UURemote"
+  - "DOMAIN-SUFFIX,netease.com"
+  - "DOMAIN-SUFFIX,163.com"
