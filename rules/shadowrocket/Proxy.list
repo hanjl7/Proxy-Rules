@@ -1,6 +1,6 @@
 # Generated Shadowrocket RULE-SET. Do not edit manually.
 # Provider: Proxyrp
-# Omitted unsupported process rules: 0
+# Omitted unsupported rules: 0
 
 DOMAIN,api.waqi.info
 DOMAIN,aqi.aqicn.org

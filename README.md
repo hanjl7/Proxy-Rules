@@ -23,10 +23,10 @@ url: https://raw.githubusercontent.com/hanjl7/Proxy-Rules/refs/heads/main/rules/
 RULE-SET,https://raw.githubusercontent.com/hanjl7/Proxy-Rules/refs/heads/main/rules/shadowrocket/AI.list,AI服务
 ```
 
-Shadowrocket 不支持 Clash YAML 的 `payload:` 外壳，也不支持 iOS 上的桌面
-进程匹配。同步脚本会从同一份 Clash 聚合快照派生 `.list`：把 `IP-CIDR6`
-转换为 Shadowrocket 使用的 `IP-CIDR`，并过滤所有 `PROCESS-NAME*` 和
-`PROCESS-PATH*` 规则。
+Shadowrocket 不支持 Clash YAML 的 `payload:` 外壳，也不支持桌面进程匹配与
+`DOMAIN-REGEX`。同步脚本会从同一份 Clash 聚合快照派生 `.list`：把 `IP-CIDR6`
+转换为 Shadowrocket 使用的 `IP-CIDR`，并过滤所有 `PROCESS-NAME*`、
+`PROCESS-PATH*` 和 `DOMAIN-REGEX` 规则。
 
 ## 更新
 
@@ -41,7 +41,8 @@ uv run --frozen python scripts/sync_rules.py sync
 uv run --frozen python scripts/sync_rules.py validate
 ```
 
-规则来源和目标路径由 [`sources.yaml`](sources.yaml) 管理。34 份上游输入会去重
+规则来源和目标路径由 [`sources.yaml`](sources.yaml) 管理。来自 7 个活跃上游的
+42 份输入会经格式转换、规则清洗（`ensure_no_resolve` / `exclude_rules`）和去重
 合并为 10 个类别，并各自生成 Clash 与 Shadowrocket 两种格式：
 
 `AI`、`Crypto`、`Social`、`Video`、`Tech`、`Broker`、`Game`、`Direct`、
@@ -49,11 +50,13 @@ uv run --frozen python scripts/sync_rules.py validate
 
 `sources.yaml` 的 `overrides` 可为指定 provider 合并本仓库维护的补充规则。
 目前 7 个补充规则文件保存在 [`overrides/clash`](overrides/clash)，同步时参与去重和格式校验；
-Shadowrocket 输出会自动过滤不支持的进程规则。
+Shadowrocket 输出会自动过滤不支持的进程与正则规则。
 
-其中 `AI.list` 和 `HK_Broker.list` 会先从 Shadowrocket list 格式转换，再并入
-对应聚合文件。20 个生成文件的校验值记录在
-[`checksums.sha256`](checksums.sha256)。
+同步脚本支持将上游 Shadowrocket/Surge 列表（`shadowrocket-list-to-clash-classical`）
+以及 Mihomo/Clash `domain` YAML（`clash-domain-to-clash-classical`）统一转换为
+Clash classical 格式再聚合。20 个生成文件的校验值记录在
+[`checksums.sha256`](checksums.sha256)，上游选型与同步细节见
+[`docs/UPSTREAMS.md`](docs/UPSTREAMS.md)。
 
 ## 来源与许可
 

@@ -17,6 +17,8 @@ import sys
 import tempfile
 import uuid
 
+from typing import Any
+
 import yaml
 
 
@@ -40,6 +42,7 @@ SHADOWROCKET_RULE_TYPES = {
     "USER-AGENT",
 }
 SHADOWROCKET_OMITTED_RULE_TYPES = {
+    "DOMAIN-REGEX",
     "PROCESS-NAME",
     "PROCESS-NAME-REGEX",
     "PROCESS-NAME-WILDCARD",
@@ -47,6 +50,12 @@ SHADOWROCKET_OMITTED_RULE_TYPES = {
     "PROCESS-PATH-REGEX",
     "PROCESS-PATH-WILDCARD",
 }
+SUPPORTED_TRANSFORMS = {
+    None,
+    "shadowrocket-list-to-clash-classical",
+    "clash-domain-to-clash-classical",
+}
+DOMAIN_VALUE_RE = re.compile(r"^[A-Za-z0-9*._-]+$")
 
 
 class SyncError(RuntimeError):
@@ -85,7 +94,7 @@ def clean_relative_path(value: object, *, label: str) -> PurePosixPath:
 
 def load_manifest() -> tuple[
     dict[str, dict[str, str]],
-    list[dict[str, str]],
+    list[dict[str, Any]],
     dict[str, str],
 ]:
     try:
@@ -125,7 +134,7 @@ def load_manifest() -> tuple[
             "license": license_id,
         }
 
-    normalized_rules: list[dict[str, str]] = []
+    normalized_rules: list[dict[str, Any]] = []
     provider_targets: dict[str, str] = {}
     target_providers: dict[str, str] = {}
     source_inputs: set[tuple[str, str, str]] = set()
@@ -175,13 +184,33 @@ def load_manifest() -> tuple[
             )
         source_inputs.add(source_input)
         transform = rule.get("transform")
-        if transform not in (None, "shadowrocket-list-to-clash-classical"):
+        if transform not in SUPPORTED_TRANSFORMS:
             raise SyncError(f"{provider} has unsupported transform {transform!r}")
+
+        ensure_no_resolve = rule.get("ensure_no_resolve", False)
+        if not isinstance(ensure_no_resolve, bool):
+            raise SyncError(f"{provider} ensure_no_resolve must be a boolean")
+
+        raw_excludes = rule.get("exclude_rules", [])
+        if not isinstance(raw_excludes, list) or any(
+            not isinstance(item, str) or not item.strip() for item in raw_excludes
+        ):
+            raise SyncError(f"{provider} exclude_rules must be a list of non-empty strings")
+        exclude_rules = [
+            normalize_clash_rule(
+                item,
+                provider=provider,
+                ensure_no_resolve=ensure_no_resolve,
+            )
+            for item in raw_excludes
+        ]
 
         normalized_rules.append({key: rule[key] for key in required})
         normalized_rules[-1]["upstream_path"] = upstream_path.as_posix()
         normalized_rules[-1]["target_path"] = target_path.as_posix()
         normalized_rules[-1]["transform"] = transform
+        normalized_rules[-1]["ensure_no_resolve"] = ensure_no_resolve
+        normalized_rules[-1]["exclude_rules"] = exclude_rules
 
     known_providers = {rule["provider"] for rule in normalized_rules}
     normalized_overrides: dict[str, str] = {}
@@ -220,7 +249,12 @@ def read_clash_payload(path: Path, provider: str) -> list[str]:
     return payload
 
 
-def normalize_clash_rule(item: str, *, provider: str) -> str:
+def normalize_clash_rule(
+    item: str,
+    *,
+    provider: str,
+    ensure_no_resolve: bool = False,
+) -> str:
     rule_type, separator, argument = item.strip().partition(",")
     rule_type = rule_type.strip()
     argument = argument.strip()
@@ -241,9 +275,27 @@ def normalize_clash_rule(item: str, *, provider: str) -> str:
             raise SyncError(f"{provider}: invalid IP rule {item!r}") from exc
         if parsed_version != expected_version:
             raise SyncError(f"{provider}: wrong address family in {item!r}")
-        argument = address
-        if option_separator:
-            argument += f",{options.strip()}"
+        option_parts = (
+            [part.strip() for part in options.split(",") if part.strip()]
+            if option_separator
+            else []
+        )
+        if ensure_no_resolve and "no-resolve" not in option_parts:
+            option_parts.append("no-resolve")
+        argument = address if not option_parts else f"{address},{','.join(option_parts)}"
+    elif rule_type == "IP-ASN":
+        asn, option_separator, options = argument.partition(",")
+        asn = asn.strip()
+        if not asn.isdigit():
+            raise SyncError(f"{provider}: invalid IP-ASN rule {item!r}")
+        option_parts = (
+            [part.strip() for part in options.split(",") if part.strip()]
+            if option_separator
+            else []
+        )
+        if ensure_no_resolve and "no-resolve" not in option_parts:
+            option_parts.append("no-resolve")
+        argument = asn if not option_parts else f"{asn},{','.join(option_parts)}"
 
     return f"{rule_type},{argument}"
 
@@ -285,10 +337,49 @@ def read_shadowrocket_payload(
     return payload
 
 
+def read_clash_domain_payload(
+    source: Path,
+    *,
+    upstream_path: str,
+    provider: str,
+) -> list[str]:
+    entries = read_clash_payload(source, provider)
+    converted: list[str] = []
+    for index, raw_entry in enumerate(entries):
+        entry = raw_entry.strip()
+        if entry.startswith("+."):
+            domain = entry[2:]
+            if not domain or not DOMAIN_VALUE_RE.fullmatch(domain) or "*" in domain:
+                raise SyncError(
+                    f"{provider}: invalid domain suffix {raw_entry!r} at {upstream_path}[{index}]"
+                )
+            converted.append(f"DOMAIN-SUFFIX,{domain}")
+        elif entry.startswith("."):
+            domain = entry[1:]
+            if not domain or not DOMAIN_VALUE_RE.fullmatch(domain) or "*" in domain:
+                raise SyncError(
+                    f"{provider}: invalid domain suffix {raw_entry!r} at {upstream_path}[{index}]"
+                )
+            converted.append(f"DOMAIN-SUFFIX,{domain}")
+        elif "*" in entry:
+            if not DOMAIN_VALUE_RE.fullmatch(entry):
+                raise SyncError(
+                    f"{provider}: invalid domain wildcard {raw_entry!r} at {upstream_path}[{index}]"
+                )
+            converted.append(f"DOMAIN-WILDCARD,{entry}")
+        else:
+            if not DOMAIN_VALUE_RE.fullmatch(entry):
+                raise SyncError(
+                    f"{provider}: invalid domain {raw_entry!r} at {upstream_path}[{index}]"
+                )
+            converted.append(f"DOMAIN,{entry}")
+    return converted
+
+
 def grouped_rules(
-    rules: list[dict[str, str]],
-) -> dict[str, list[dict[str, str]]]:
-    groups: dict[str, list[dict[str, str]]] = {}
+    rules: list[dict[str, Any]],
+) -> dict[str, list[dict[str, Any]]]:
+    groups: dict[str, list[dict[str, Any]]] = {}
     for rule in rules:
         groups.setdefault(rule["target_path"], []).append(rule)
     return groups
@@ -305,7 +396,7 @@ def shadowrocket_target_path(clash_target: str) -> str:
     ).as_posix()
 
 
-def managed_targets(rules: list[dict[str, str]]) -> list[str]:
+def managed_targets(rules: list[dict[str, Any]]) -> list[str]:
     clash_targets = sorted(grouped_rules(rules))
     shadowrocket_targets = [
         shadowrocket_target_path(target) for target in clash_targets
@@ -313,7 +404,7 @@ def managed_targets(rules: list[dict[str, str]]) -> list[str]:
     return clash_targets + shadowrocket_targets
 
 
-def checksum_document(rules: list[dict[str, str]], base: Path = ROOT) -> str:
+def checksum_document(rules: list[dict[str, Any]], base: Path = ROOT) -> str:
     lines = [
         f"{sha256(base / target)}  {target}"
         for target in sorted(managed_targets(rules))
@@ -348,7 +439,7 @@ def read_shadowrocket_output(path: Path, provider: str) -> list[str]:
     return rules
 
 
-def validate_tree(rules: list[dict[str, str]], base: Path = ROOT) -> None:
+def validate_tree(rules: list[dict[str, Any]], base: Path = ROOT) -> None:
     groups = grouped_rules(rules)
     expected = set(managed_targets(rules))
     clients = {"clash", "shadowrocket"}
@@ -396,7 +487,7 @@ def write_if_changed(path: Path, content: str) -> bool:
 
 def clone_sources(
     sources: dict[str, dict[str, str]],
-    rules: list[dict[str, str]],
+    rules: list[dict[str, Any]],
     workspace: Path,
 ) -> dict[str, Path]:
     checkouts: dict[str, Path] = {}
@@ -446,7 +537,7 @@ def clone_sources(
 
 def build_aggregate(
     sources: dict[str, dict[str, str]],
-    inputs: list[dict[str, str]],
+    inputs: list[dict[str, Any]],
     checkouts: dict[str, Path],
     overrides: dict[str, str],
     target: Path,
@@ -474,8 +565,17 @@ def build_aggregate(
                 upstream_path=rule["upstream_path"],
                 provider=provider,
             )
+        elif rule["transform"] == "clash-domain-to-clash-classical":
+            payload = read_clash_domain_payload(
+                source,
+                upstream_path=rule["upstream_path"],
+                provider=provider,
+            )
         else:
             payload = read_clash_payload(source, provider)
+
+        ensure_no_resolve = bool(rule.get("ensure_no_resolve", False))
+        excluded = set(rule.get("exclude_rules", []))
 
         output.append("")
         output.append(
@@ -485,8 +585,12 @@ def build_aggregate(
         )
         input_count += len(payload)
         for item in payload:
-            item = normalize_clash_rule(item, provider=provider)
-            if item in seen:
+            item = normalize_clash_rule(
+                item,
+                provider=provider,
+                ensure_no_resolve=ensure_no_resolve,
+            )
+            if item in excluded or item in seen:
                 continue
             seen.add(item)
             output.append(f"  - {json.dumps(item, ensure_ascii=False)}")
@@ -549,7 +653,7 @@ def build_shadowrocket_output(
     output = [
         "# Generated Shadowrocket RULE-SET. Do not edit manually.",
         f"# Provider: {provider}",
-        f"# Omitted unsupported process rules: {omitted}",
+        f"# Omitted unsupported rules: {omitted}",
         "",
         *converted,
     ]
@@ -564,7 +668,7 @@ def build_shadowrocket_output(
 
 def staged_tree(
     sources: dict[str, dict[str, str]],
-    rules: list[dict[str, str]],
+    rules: list[dict[str, Any]],
     overrides: dict[str, str],
     stage: Path,
 ) -> None:
@@ -588,16 +692,16 @@ def staged_tree(
         )
         print(
             f"Built {inputs[0]['provider']}: {unique_count} unique rules from "
-            f"{len(inputs)} sources ({input_count - unique_count} duplicates removed); "
+            f"{len(inputs)} sources ({input_count - unique_count} duplicates/excluded removed); "
             f"{shadowrocket_count} Shadowrocket rules "
-            f"({omitted_count} process rules omitted)",
+            f"({omitted_count} unsupported rules omitted)",
             flush=True,
         )
 
     validate_tree(rules, stage / "snapshot")
 
 
-def trees_match(rules: list[dict[str, str]], staged: Path) -> bool:
+def trees_match(rules: list[dict[str, Any]], staged: Path) -> bool:
     try:
         validate_tree(rules, ROOT)
     except SyncError:
@@ -608,7 +712,7 @@ def trees_match(rules: list[dict[str, str]], staged: Path) -> bool:
     )
 
 
-def replace_clients(rules: list[dict[str, str]], staged: Path) -> None:
+def replace_clients(rules: list[dict[str, Any]], staged: Path) -> None:
     clients = ["clash", "shadowrocket"]
     RULES_ROOT.mkdir(exist_ok=True)
     swapped: list[tuple[Path, Path | None]] = []
@@ -643,7 +747,7 @@ def replace_clients(rules: list[dict[str, str]], staged: Path) -> None:
 
 def synchronize(
     sources: dict[str, dict[str, str]],
-    rules: list[dict[str, str]],
+    rules: list[dict[str, Any]],
     overrides: dict[str, str],
 ) -> None:
     if shutil.which("gh") is None or shutil.which("git") is None:
@@ -670,7 +774,7 @@ def synchronize(
         print(f"Updated {len(managed_targets(rules))} rule snapshots", flush=True)
 
 
-def validate_repository(rules: list[dict[str, str]]) -> None:
+def validate_repository(rules: list[dict[str, Any]]) -> None:
     validate_tree(rules, ROOT)
     expected_checksums = checksum_document(rules)
     try:

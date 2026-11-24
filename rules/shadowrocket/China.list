@@ -1,6 +1,6 @@
 # Generated Shadowrocket RULE-SET. Do not edit manually.
 # Provider: Chinarp
-# Omitted unsupported process rules: 14
+# Omitted unsupported rules: 14
 
 DOMAIN,cpro.baidustatic.com
 DOMAIN,analytics.strava.com

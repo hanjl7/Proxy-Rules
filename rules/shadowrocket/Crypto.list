@@ -1,6 +1,6 @@
 # Generated Shadowrocket RULE-SET. Do not edit manually.
 # Provider: Cryptorp
-# Omitted unsupported process rules: 0
+# Omitted unsupported rules: 0
 
 DOMAIN,bybit-exchange.github.io
 DOMAIN,bybit.ada.support

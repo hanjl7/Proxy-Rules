@@ -9,16 +9,24 @@ sources:
     repository: haha-miao/rule_file
     ref: main
     license: NOASSERTION
-  additional_rule_for_clash:
-    repository: Accademia/Additional_Rule_For_Clash
+  ai_proxy_rules:
+    repository: VPSDance/ai-proxy-rules
     ref: main
     license: MIT
-  skywalker_clash_rules:
-    repository: SkywalkerJi/Clash-Rules
-    ref: master
+  meta_rules_dat:
+    repository: MetaCubeX/meta-rules-dat
+    ref: meta
     license: GPL-3.0
-  shadowrocket_rules:
-    repository: hanjl7/Shadowrocket-Rules
+  sukka_ruleset:
+    repository: SukkaLab/ruleset.skk.moe
+    ref: master
+    license: AGPL-3.0
+  broker_rules:
+    repository: forecho/broker-rules
+    ref: main
+    license: AGPL-3.0
+  lingjing_shadowrocket_rules:
+    repository: LingJingMaster/Shadowrocket-Rules
     ref: main
     license: MIT
 
@@ -38,13 +46,45 @@ rules:
   - { provider: Directrp, client: clash, format: clash-classical, source: ios_rule_script, upstream_path: rule/Clash/Lan/Lan_No_Resolve.yaml, target_path: rules/clash/Direct.yaml }
   - { provider: Directrp, client: clash, format: clash-classical, source: rule_file, upstream_path: clash/emby/emby-direct.yaml, target_path: rules/clash/Direct.yaml }
 
-  # AI: dedicated providers first, then the personal AI.list as a fallback.
-  - { provider: AIrp, client: clash, format: clash-classical, source: ios_rule_script, upstream_path: rule/Clash/OpenAI/OpenAI_No_Resolve.yaml, target_path: rules/clash/AI.yaml }
-  - { provider: AIrp, client: clash, format: clash-classical, source: additional_rule_for_clash, upstream_path: Grok/Grok.yaml, target_path: rules/clash/AI.yaml }
-  - { provider: AIrp, client: clash, format: clash-classical, source: skywalker_clash_rules, upstream_path: AI/Cursor.yaml, target_path: rules/clash/AI.yaml }
-  - { provider: AIrp, client: clash, format: clash-classical, source: skywalker_clash_rules, upstream_path: AI/Anthropic.yaml, target_path: rules/clash/AI.yaml }
-  - { provider: AIrp, client: clash, format: clash-classical, source: skywalker_clash_rules, upstream_path: AI/Gemini.yaml, target_path: rules/clash/AI.yaml }
-  - { provider: AIrp, client: clash, format: clash-classical, transform: shadowrocket-list-to-clash-classical, source: shadowrocket_rules, upstream_path: AI.list, target_path: rules/clash/AI.yaml }
+  # AI: actively maintained per-provider rules, v2fly/MetaCubeX geosite, and official ChatGPT Voice CIDRs.
+  - provider: AIrp
+    client: clash
+    format: clash-classical
+    source: ai_proxy_rules
+    upstream_path: rules/clash/openai.yaml
+    target_path: rules/clash/AI.yaml
+    ensure_no_resolve: true
+    exclude_rules:
+      - "DOMAIN-SUFFIX,sentry.io"
+  - provider: AIrp
+    client: clash
+    format: clash-classical
+    source: ai_proxy_rules
+    upstream_path: rules/clash/anthropic.yaml
+    target_path: rules/clash/AI.yaml
+    ensure_no_resolve: true
+    exclude_rules:
+      - "DOMAIN,storage.googleapis.com"
+      - "DOMAIN-SUFFIX,sentry.io"
+      - "DOMAIN-KEYWORD,datadog"
+      - "DOMAIN-KEYWORD,sentry"
+      - "DOMAIN-KEYWORD,sift"
+  - { provider: AIrp, client: clash, format: clash-classical, source: ai_proxy_rules, upstream_path: rules/clash/google-ai.yaml, target_path: rules/clash/AI.yaml }
+  - { provider: AIrp, client: clash, format: clash-classical, source: ai_proxy_rules, upstream_path: rules/clash/x-ai.yaml, target_path: rules/clash/AI.yaml }
+  - { provider: AIrp, client: clash, format: clash-classical, source: ai_proxy_rules, upstream_path: rules/clash/cursor.yaml, target_path: rules/clash/AI.yaml }
+  - { provider: AIrp, client: clash, format: clash-classical, source: ai_proxy_rules, upstream_path: rules/clash/factory.yaml, target_path: rules/clash/AI.yaml }
+  - { provider: AIrp, client: clash, format: clash-classical, source: ai_proxy_rules, upstream_path: rules/clash/zed.yaml, target_path: rules/clash/AI.yaml }
+  - { provider: AIrp, client: clash, format: clash-classical, transform: clash-domain-to-clash-classical, source: meta_rules_dat, upstream_path: geo/geosite/category-ai-!cn.yaml, target_path: rules/clash/AI.yaml }
+  - provider: AIrp
+    client: clash
+    format: clash-classical
+    transform: shadowrocket-list-to-clash-classical
+    source: sukka_ruleset
+    upstream_path: Clash/ip/ai.txt
+    target_path: rules/clash/AI.yaml
+    ensure_no_resolve: true
+    exclude_rules:
+      - "DOMAIN,7h15.ru1353t.1s.m4d3.by.5ukk4w.skk.moe"
 
   # Crypto.
   - { provider: Cryptorp, client: clash, format: clash-classical, source: rule_file, upstream_path: clash/crypto/Crypto.yaml, target_path: rules/clash/Crypto.yaml }
@@ -74,7 +114,12 @@ rules:
 
   # Finance and foreign brokers.
   - { provider: Brokerrp, client: clash, format: clash-classical, source: ios_rule_script, upstream_path: rule/Clash/PayPal/PayPal_No_Resolve.yaml, target_path: rules/clash/Broker.yaml }
-  - { provider: Brokerrp, client: clash, format: clash-classical, transform: shadowrocket-list-to-clash-classical, source: shadowrocket_rules, upstream_path: HK_Broker.list, target_path: rules/clash/Broker.yaml }
+  - { provider: Brokerrp, client: clash, format: clash-classical, source: broker_rules, upstream_path: rule/Clash/Broker.yaml, target_path: rules/clash/Broker.yaml, ensure_no_resolve: true }
+  - { provider: Brokerrp, client: clash, format: clash-classical, transform: shadowrocket-list-to-clash-classical, source: lingjing_shadowrocket_rules, upstream_path: HK_Broker.list, target_path: rules/clash/Broker.yaml, ensure_no_resolve: true }
+  - { provider: Brokerrp, client: clash, format: clash-classical, transform: clash-domain-to-clash-classical, source: meta_rules_dat, upstream_path: geo/geosite/ibkr.yaml, target_path: rules/clash/Broker.yaml }
+  - { provider: Brokerrp, client: clash, format: clash-classical, transform: clash-domain-to-clash-classical, source: meta_rules_dat, upstream_path: geo/geosite/futu.yaml, target_path: rules/clash/Broker.yaml }
+  - { provider: Brokerrp, client: clash, format: clash-classical, transform: clash-domain-to-clash-classical, source: meta_rules_dat, upstream_path: geo/geosite/longbridge.yaml, target_path: rules/clash/Broker.yaml }
+  - { provider: Brokerrp, client: clash, format: clash-classical, transform: clash-domain-to-clash-classical, source: meta_rules_dat, upstream_path: geo/geosite/schwab.yaml, target_path: rules/clash/Broker.yaml }
 
   # Games.
   - { provider: Gamerp, client: clash, format: clash-classical, source: ios_rule_script, upstream_path: rule/Clash/Steam/Steam_No_Resolve.yaml, target_path: rules/clash/Game.yaml }

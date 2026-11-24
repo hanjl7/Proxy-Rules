@@ -9,7 +9,10 @@ payload:
   # Anthropic CLI and URL handler.
   - "PROCESS-NAME,claude"
 
-  # Google Antigravity applications.
+  # Google Antigravity applications and supplemental backend endpoints.
+  - "DOMAIN,daily-cloudcode-pa.sandbox.googleapis.com"
+  - "DOMAIN,cloudcode-experiments.googleapis.com"
+  - "DOMAIN-SUFFIX,jetski-webchannel.googleapis.com"
   - "PROCESS-NAME,Antigravity"
   - "PROCESS-NAME-WILDCARD,Antigravity Helper*"
   - "PROCESS-NAME-WILDCARD,Antigravity IDE Helper*"

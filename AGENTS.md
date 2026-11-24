@@ -22,8 +22,8 @@ this repository.
 
 The manifest currently aggregates:
 
-- 5 upstream repositories;
-- 34 declared upstream inputs;
+- 7 upstream repositories;
+- 42 declared upstream inputs;
 - 7 local override files;
 - 10 provider categories;
 - 10 Clash outputs and 10 Shadowrocket outputs.
@@ -59,6 +59,8 @@ same change.
 - `checksums.sha256`: SHA-256 values for all 20 managed outputs.
 - `.github/workflows/sync-rules.yml`: weekly and manually triggered upstream
   synchronization.
+- `docs/UPSTREAMS.md`: upstream audit, retired-source replacements, coverage
+  summary, and synchronization pipeline design.
 - `THIRD_PARTY_NOTICES.md`: upstream authorship and license status.
 
 Files under `rules/` and `checksums.sha256` are generated. Do not edit them
@@ -70,9 +72,11 @@ The current upstreams are declared in `sources.yaml`:
 
 - `blackmatrix7/ios_rule_script` at `master`, GPL-2.0;
 - `haha-miao/rule_file` at `main`, license not declared;
-- `Accademia/Additional_Rule_For_Clash` at `main`, MIT;
-- `SkywalkerJi/Clash-Rules` at `master`, GPL-3.0;
-- `hanjl7/Shadowrocket-Rules` at `main`, MIT.
+- `VPSDance/ai-proxy-rules` at `main`, MIT;
+- `MetaCubeX/meta-rules-dat` at `meta`, GPL-3.0;
+- `SukkaLab/ruleset.skk.moe` at `master`, AGPL-3.0;
+- `forecho/broker-rules` at `main`, AGPL-3.0;
+- `LingJingMaster/Shadowrocket-Rules` at `main`, MIT.
 
 Preserve generated source comments and upstream attribution. Do not apply one
 new repository-wide license to third-party rule content. When adding or
@@ -90,8 +94,16 @@ removing an upstream, update both `sources.yaml` and
 - `upstream_path`;
 - `target_path`.
 
-The supported input format is `clash-classical`. A Shadowrocket list input may
-declare `transform: shadowrocket-list-to-clash-classical`.
+The supported input format is `clash-classical`. Optional per-input fields:
+
+- `transform`: `shadowrocket-list-to-clash-classical` (plain `.list` / `.txt`)
+  or `clash-domain-to-clash-classical` (Mihomo/Clash `domain` YAML such as
+  `MetaCubeX/meta-rules-dat`);
+- `ensure_no_resolve`: boolean; appends `,no-resolve` to `IP-CIDR`, `IP-CIDR6`,
+  and `IP-ASN` entries when missing;
+- `exclude_rules`: list of exact normalized classical rules to drop from an
+  upstream input (e.g., watermark domains or overly broad shared infrastructure
+  rules).
 
 Each provider maps to exactly one Clash target, and each target maps to exactly
 one provider. Input triples must be unique. Paths must be safe relative paths
@@ -121,7 +133,7 @@ Shadowrocket output is derived from that exact Clash payload:
 
 - remove the Clash `payload:` wrapper;
 - convert `IP-CIDR6` to `IP-CIDR`;
-- omit all `PROCESS-NAME*` and `PROCESS-PATH*` rule types;
+- omit all `PROCESS-NAME*`, `PROCESS-PATH*`, and `DOMAIN-REGEX` rule types;
 - preserve every other supported rule in the same order;
 - fail if an unsupported rule type remains.
 
